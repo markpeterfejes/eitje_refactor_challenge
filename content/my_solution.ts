@@ -1,71 +1,119 @@
 import { argv } from "process";
 
-type DurationType = {
-  years: number;
-  days: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
-};
+const MINUTE_SECONDS = 60;
+const HOUR_SECONDS = MINUTE_SECONDS * 60;
+const DAYS_SECONDS = HOUR_SECONDS * 24;
+const YEAR_SECONDS = DAYS_SECONDS * 365;
 
+/**
+ * TODO: create setters to prevent setting units higher than they should be and to recalculate the second duration
+ * TODO: localization and different method of pluralization
+ */
 class Duration {
   years: number;
   days: number;
   hours: number;
   minutes: number;
   seconds: number;
-  
-  constructor(second: number) {
 
+  private readonly printOrder = [
+    "years",
+    "days",
+    "hours",
+    "minutes",
+    "seconds",
+  ] as const;
+
+  private readonly dateComponentLabels = {
+    years: "year",
+    days: "day",
+    hours: "hour",
+    minutes: "minute",
+    seconds: "second",
+  } as const;
+
+  constructor(public durationInSeconds: number) {
+    if (isNaN(durationInSeconds) || durationInSeconds < 0)
+      throw new TypeError("Please only provide positive integers");
+
+    this.years = Math.floor(durationInSeconds / YEAR_SECONDS);
+
+    this.days = Math.floor(
+      (durationInSeconds - this.years * YEAR_SECONDS) / DAYS_SECONDS
+    );
+
+    this.hours = Math.floor(
+      (durationInSeconds -
+        (this.years * YEAR_SECONDS + this.days * DAYS_SECONDS)) /
+        HOUR_SECONDS
+    );
+
+    this.minutes = Math.floor(
+      (durationInSeconds -
+        (this.years * YEAR_SECONDS +
+          this.days * DAYS_SECONDS +
+          this.hours * HOUR_SECONDS)) /
+        MINUTE_SECONDS
+    );
+
+    this.seconds = Math.floor(
+      durationInSeconds -
+        (this.years * YEAR_SECONDS +
+          this.days * DAYS_SECONDS +
+          this.hours * HOUR_SECONDS +
+          this.minutes * MINUTE_SECONDS)
+    );
   }
-}
 
-const MINUTE_SECONDS = 60;
-const HOUR_SECONDS = MINUTE_SECONDS * 60;
-const DAYS_SECONDS = HOUR_SECONDS * 24;
-const YEAR_SECONDS = DAYS_SECONDS * 365;
+  /** This could be of course further complexioned and injected in the class depending on the locale  */
+  pluralize(toPluralize: string, count: number) {
+    if (count > 1) {
+      return toPluralize + "s";
+    } else {
+      return toPluralize;
+    }
+  }
 
-function parseDuration(durationInSeconds: number): Duration {
-  const years = Math.floor(durationInSeconds / YEAR_SECONDS);
+  isNow() {
+    return this.durationInSeconds === 0;
+  }
 
-  const days = Math.floor(
-    (durationInSeconds - years * YEAR_SECONDS) / DAYS_SECONDS
-  );
+  getSeparator(
+    numberOfComponentsToPrint: number,
+    currentPositionIndex: number
+  ) {
+    if (currentPositionIndex === 0) {
+      return "";
+    } else if (currentPositionIndex === numberOfComponentsToPrint - 1) {
+      return " and ";
+    } else {
+      return ", ";
+    }
+  }
 
-  const hours = Math.floor(
-    (durationInSeconds - (years * YEAR_SECONDS + days * DAYS_SECONDS)) /
-      HOUR_SECONDS
-  );
+  toString() {
+    if (this.isNow()) {
+      return "now";
+    }
 
-  const minutes = Math.floor(
-    (durationInSeconds -
-      (years * YEAR_SECONDS + days * DAYS_SECONDS + hours * HOUR_SECONDS)) /
-      MINUTE_SECONDS
-  );
+    const componentsToPrint = this.printOrder.filter(
+      (dateComponent) => this[dateComponent] > 0
+    );
 
-  const seconds = Math.floor(
-    durationInSeconds -
-      (years * YEAR_SECONDS +
-        days * DAYS_SECONDS +
-        hours * HOUR_SECONDS +
-        minutes * MINUTE_SECONDS)
-  );
+    return componentsToPrint.reduce((acc, curr, index) => {
+      const separator = this.getSeparator(componentsToPrint.length, index);
 
-  return {
-    years,
-    days,
-    hours,
-    minutes,
-    seconds,
-  };
-}
-
-function formatDuration(duration: number): string {
-  return JSON.stringify(parseDuration(duration), undefined, 4);
+      return (
+        acc +
+        separator +
+        this[curr] +
+        " " +
+        this.pluralize(this.dateComponentLabels[curr], this[curr])
+      );
+    }, "");
+  }
 }
 
 const inputDuration = parseInt(argv[2]);
 
-if (isNaN(inputDuration)) throw new TypeError("Please only provide numbers");
-
-console.log(formatDuration(inputDuration));
+console.log(new Duration(inputDuration).toString());
