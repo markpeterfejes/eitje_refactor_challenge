@@ -96,21 +96,20 @@ class Duration {
       return "now";
     }
 
-    const componentsToPrint = this.printOrder.filter(
-      (dateComponent) => this[dateComponent] > 0
-    );
-
-    return componentsToPrint.reduce((acc, curr, index) => {
-      const separator = this.getSeparator(componentsToPrint.length, index);
-
-      return (
-        acc +
-        separator +
-        this[curr] +
-        " " +
-        this.pluralize(this.dateComponentLabels[curr], this[curr])
-      );
-    }, "");
+    return this.printOrder
+      .filter((dateComponent) => this[dateComponent] > 0)
+      .reduce((acc, currentDateComponent, index, originalArray) => {
+        return (
+          acc +
+          this.getSeparator(originalArray.length, index) +
+          this[currentDateComponent] +
+          " " +
+          this.pluralize(
+            this.dateComponentLabels[currentDateComponent],
+            this[currentDateComponent]
+          )
+        );
+      }, "");
   }
 }
 
